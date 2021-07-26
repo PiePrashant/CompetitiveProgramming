@@ -1,4 +1,3 @@
-#pragma once
 #include<iostream>
 #include<vector>
 #include<string>
@@ -33,25 +32,26 @@ class Exit {
 public:
 	string name;
 	vector<VehicleType> supportedVehicle;
-	unordered_map< VehicleType, priority_queue< pair<int, VehicleSlot*> > > distances;
-
+	unordered_map< VehicleType, priority_queue< pair<int, VehicleSlot*> > > pqMap;
+	unordered_map<VehicleSlot*, int> distances;
 	Exit(string name) {
 		this -> name = name;
 	}
 	void addDist(VehicleSlot *vehicleSlot, int dist) {
-		if (distances.find(vehicleSlot->vehicleSlotType) != distances.end())
-			distances[vehicleSlot->vehicleSlotType].push({ -dist, vehicleSlot });
+		if (pqMap.find(vehicleSlot->vehicleSlotType) != pqMap.end())
+			pqMap[vehicleSlot->vehicleSlotType].push({ -dist, vehicleSlot });
 		else {
-			distances[vehicleSlot->vehicleSlotType] = priority_queue < pair<int, VehicleSlot*>>{};
-			distances[vehicleSlot->vehicleSlotType].push({ -dist, vehicleSlot });
+			pqMap[vehicleSlot->vehicleSlotType] = priority_queue < pair<int, VehicleSlot*>>{};
+			pqMap[vehicleSlot->vehicleSlotType].push({ -dist, vehicleSlot });
 		}
+		distances[vehicleSlot] = dist;
 	}
 
 	VehicleSlot* getSlot(VehicleType vehicleType) {
-		while (!distances[vehicleType].empty()) {
-			int dist = distances[vehicleType].top().first;
-			VehicleSlot* ret = distances[vehicleType].top().second;
-			distances[vehicleType].pop();
+		while (!pqMap[vehicleType].empty()) {
+			int dist = pqMap[vehicleType].top().first;
+			VehicleSlot* ret = pqMap[vehicleType].top().second;
+			pqMap[vehicleType].pop();
 			if (ret->isOccupied == false) {
 				ret->isOccupied = true;
 				return ret;
@@ -60,9 +60,10 @@ public:
 		return nullptr;
 	}
 
-	void freeSlot(VehicleSlot *vehicleSlot,  int dist) {
+	void freeSlot(VehicleSlot *vehicleSlot) {
 		vehicleSlot->isOccupied = false;
-		distances[vehicleSlot->vehicleSlotType].push({ -dist, vehicleSlot});
+		int dist = distances[vehicleSlot];
+		pqMap[vehicleSlot->vehicleSlotType].push({ -dist, vehicleSlot});
 	}
 };
 
@@ -82,8 +83,16 @@ public:
 	void addDist(string exitName, int slotId, int dist) {
 		exits[exitName]->addDist(slots[slotId], dist);
 	}
-	int findSlot(string exitName, VehicleType vehicleType) {
-		exits[exitName]->
+	int bookSlot(string exitName, VehicleType vehicleType) {
+		exits[exitName]->getSlot(vehicleType);
+	}
+	int releaseSlot(int slotId) {
+		VehicleSlot* slot = slots[slotId];
+		for (auto el : exits) {
+			Exit* exit = el.second;
+			string exitName = el.first;
+			exit->freeSlot(slot);
+		}
 	}
 };
 
